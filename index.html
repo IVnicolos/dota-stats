@@ -349,7 +349,7 @@ function loadCache() {
     if (!raw) return false;
     const parsed = JSON.parse(raw);
     // Кеш живёт 10 минут
-    if (Date.now() - parsed.timestamp > 10 * 60 * 1000) return false;
+    if (Date.now() - parsed.timestamp > 60 * 60 * 1000) return false;
     cache = parsed;
     return true;
   } catch(e) { return false; }
@@ -368,7 +368,7 @@ async function loadData(force = false) {
     if (!useCache) {
       const [playerRes, matchesRes, heroesRes] = await Promise.all([
         fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID),
-        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=20'),
+        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=100'),
         fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/heroes')
       ]);
       if (!playerRes.ok || !matchesRes.ok || !heroesRes.ok) throw new Error('Ошибка API');
