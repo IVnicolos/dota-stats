@@ -74,36 +74,13 @@
 
   .profile {
     background: var(--card); border-radius: 14px; padding: 16px;
-    display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
   }
   .avatar { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; background: var(--bg); }
   .profile-info { flex: 1; min-width: 0; }
   .nickname { font-size: 20px; font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rank { color: var(--accent); font-size: 13px; font-weight: 600; }
   .winrate { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
-
-  .streak {
-    background: var(--card); border-radius: 12px; padding: 12px 16px;
-    margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
-    font-weight: 600; font-size: 15px;
-  }
-  .streak.win-streak { border-left: 4px solid var(--win); }
-  .streak.loss-streak { border-left: 4px solid var(--loss); }
-  .streak-emoji { font-size: 22px; }
-
-  .filters {
-    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px;
-    margin-bottom: 6px; scrollbar-width: none;
-  }
-  .filters::-webkit-scrollbar { display: none; }
-  .filter-btn {
-    flex-shrink: 0; background: var(--card); border: 1px solid transparent;
-    color: var(--text-dim); border-radius: 20px; padding: 6px 14px;
-    font-size: 13px; font-family: inherit; cursor: pointer;
-  }
-  .filter-btn.active {
-    color: var(--accent); border-color: var(--accent); font-weight: 600;
-  }
 
   h2 { font-size: 17px; margin: 8px 0 12px; font-weight: 600; }
 
@@ -142,17 +119,6 @@
   .hero-wr.bad { color: var(--loss); }
   .hero-kda { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
 
-  .role-card {
-    background: var(--card); border-radius: 12px; padding: 16px;
-    border-left: 4px solid var(--accent); margin-bottom: 10px;
-  }
-  .role-card.no-data { border-left-color: var(--text-dim); opacity: 0.6; }
-  .role-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .role-stats { color: var(--text-dim); font-size: 13px; }
-  .role-wr { font-size: 24px; font-weight: 700; margin-top: 6px; }
-  .role-wr.good { color: var(--win); }
-  .role-wr.bad { color: var(--loss); }
-
   .tabbar {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--card);
@@ -163,7 +129,7 @@
   }
   .tabbar button {
     flex: 1; background: none; border: none; padding: 10px 0 8px;
-    color: var(--text-dim); font-size: 10px; font-family: inherit;
+    color: var(--text-dim); font-size: 11px; font-family: inherit;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     cursor: pointer;
   }
@@ -207,7 +173,7 @@
   .player-row {
     background: var(--card); border-radius: 8px; padding: 8px 10px;
     display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
-    font-size: 13px; flex-wrap: wrap;
+    font-size: 13px;
   }
   .player-hero { width: 48px; height: 27px; border-radius: 4px; flex-shrink: 0; }
   .player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -234,10 +200,6 @@
   <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
 </div>
 
-<div id="page-roles" class="page hidden">
-  <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
-</div>
-
 <div id="page-top" class="page hidden">
   <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
 </div>
@@ -248,9 +210,6 @@
   </button>
   <button data-tab="heroes" onclick="switchTab('heroes')">
     <span class="icon">🦸</span><span>Герои</span>
-  </button>
-  <button data-tab="roles" onclick="switchTab('roles')">
-    <span class="icon">🎯</span><span>Роли</span>
   </button>
   <button data-tab="top" onclick="switchTab('top')">
     <span class="icon">🏆</span><span>Топ</span>
@@ -269,7 +228,7 @@
 const ACCOUNT_ID = '1062784716';
 const HERO_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
 const ITEM_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/';
-let ITEMS_MAP = {};
+let ITEMS_MAP = {}; // сюда загрузим id → имя предмета
 
 const HEROES = {
   1:'antimage',2:'axe',3:'bane',4:'bloodseeker',5:'crystal_maiden',6:'drow_ranger',
@@ -300,27 +259,10 @@ const HEROES = {
   135:'dawnbreaker',136:'marci',137:'primal_beast',138:'muerta'
 };
 
-const HERO_ROLES = {
-  1:1,6:1,8:1,10:1,12:1,15:1,18:1,19:1,32:1,35:1,41:1,42:1,44:1,46:1,47:1,48:1,
-  54:1,56:1,59:1,63:1,67:1,70:1,72:1,73:1,77:1,80:1,81:1,89:1,93:1,94:1,95:1,
-  98:1,106:1,109:1,110:1,114:1,120:1,129:1,136:1,
-  11:2,13:2,17:2,21:2,25:2,34:2,39:2,45:2,52:2,53:2,55:2,74:2,76:2,90:2,105:2,
-  113:2,126:2,128:2,138:2,
-  2:3,4:3,7:3,14:3,16:3,22:3,23:3,28:3,29:3,33:3,36:3,38:3,49:3,51:3,57:3,60:3,
-  61:3,64:3,65:3,69:3,71:3,78:3,84:3,88:3,96:3,97:3,99:3,100:3,103:3,104:3,
-  107:3,108:3,111:3,119:3,121:3,123:3,135:3,137:3,
-  5:4,9:4,20:4,26:4,27:4,31:4,37:4,40:4,43:4,50:4,58:4,62:4,68:4,79:4,83:4,86:4,
-  87:4,91:4,101:4,102:4,112:4,131:4,
-  3:5,24:5,30:5,66:5,75:5,82:5,85:5,92:5,115:5
-};
-
 const RANKS = ['Нет','Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
-const ROLE_NAMES = { 1: 'Керри (1)', 2: 'Мидер (2)', 3: 'Оффлейн (3)', 4: 'Сапорт (4)', 5: 'Хард сапорт (5)' };
 
 let cache = { player: null, matches: [], heroes: [], timestamp: 0 };
 let currentTab = 'matches';
-let matchFilter = 'all';
-let heroFilterId = null;
 
 function getRankName(tier) {
   if (!tier) return null;
@@ -342,13 +284,8 @@ function isWin(m) {
   const isRadiant = m.player_slot < 128;
   return (isRadiant && m.radiant_win) || (!isRadiant && !m.radiant_win);
 }
-function pluralize(n, one, few, many) {
-  const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-}
 
+// Кеширование
 function saveCache() {
   try {
     cache.timestamp = Date.now();
@@ -360,7 +297,8 @@ function loadCache() {
     const raw = localStorage.getItem('dota_stats_cache');
     if (!raw) return false;
     const parsed = JSON.parse(raw);
-    if (Date.now() - parsed.timestamp > 60 * 60 * 1000) return false;
+    // Кеш живёт 10 минут
+    if (Date.now() - parsed.timestamp > 10 * 60 * 1000) return false;
     cache = parsed;
     return true;
   } catch(e) { return false; }
@@ -368,19 +306,18 @@ function loadCache() {
 
 async function loadData(force = false) {
   const useCache = !force && loadCache();
-
+  
   if (!useCache) {
     document.getElementById('page-matches').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
     document.getElementById('page-heroes').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
-    document.getElementById('page-roles').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
     document.getElementById('page-top').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
   }
-
+  
   try {
     if (!useCache) {
       const [playerRes, matchesRes, heroesRes] = await Promise.all([
         fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID),
-        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=50'),
+        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=20'),
         fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/heroes')
       ]);
       if (!playerRes.ok || !matchesRes.ok || !heroesRes.ok) throw new Error('Ошибка API');
@@ -389,8 +326,10 @@ async function loadData(force = false) {
       cache.heroes = await heroesRes.json();
       saveCache();
     }
-
+    
+    // Загружаем маппинг предметов отдельно (кешируется навсегда)
     await loadItemsMap();
+    
     renderAll();
   } catch (err) {
     document.getElementById('page-' + currentTab).innerHTML =
@@ -398,6 +337,7 @@ async function loadData(force = false) {
   }
 }
 
+// Загрузка списка предметов (id → имя). Кешируется навсегда в localStorage.
 async function loadItemsMap() {
   try {
     const cached = localStorage.getItem('dota_items_map');
@@ -408,9 +348,12 @@ async function loadItemsMap() {
     const res = await fetch('https://api.opendota.com/api/constants/items');
     if (!res.ok) return;
     const data = await res.json();
+    // data = { "blink": {id: 1, ...}, "black_king_bar": {id: 34, ...}, ... }
     const map = {};
     for (const [name, info] of Object.entries(data)) {
-      if (info && info.id) map[info.id] = name;
+      if (info && info.id) {
+        map[info.id] = name;
+      }
     }
     ITEMS_MAP = map;
     localStorage.setItem('dota_items_map', JSON.stringify(map));
@@ -422,74 +365,26 @@ async function loadItemsMap() {
 function renderAll() {
   renderMatches();
   renderHeroes();
-  renderRoles();
   renderTop();
-}
-
-function calculateStreak() {
-  const sorted = [...cache.matches].sort((a, b) => b.start_time - a.start_time);
-  if (sorted.length === 0) return null;
-  const firstWin = isWin(sorted[0]);
-  let count = 0;
-  for (const m of sorted) {
-    if (isWin(m) === firstWin) count++;
-    else break;
-  }
-  return { win: firstWin, count };
 }
 
 function renderMatches() {
   const p = cache.player;
   const matches = cache.matches;
-
   const wins = matches.filter(isWin).length;
   const wr = matches.length > 0 ? ((wins / matches.length) * 100).toFixed(1) : '0';
   const rankName = getRankName(p.rank_tier);
-
+  
   let html = '<div class="profile">';
   html += '<img class="avatar" src="' + (p.profile.avatarfull || '') + '" alt="">';
   html += '<div class="profile-info">';
   html += '<div class="nickname">' + (p.profile.personaname || 'Игрок') + '</div>';
   if (rankName) html += '<div class="rank">Ранг: ' + rankName + '</div>';
-  html += '<div class="winrate">Win Rate (' + matches.length + ' матчей): ' + wr + '%</div>';
+  html += '<div class="winrate">Win Rate (последние ' + matches.length + '): ' + wr + '%</div>';
   html += '</div></div>';
-
-  const streak = calculateStreak();
-  if (streak && streak.count >= 2) {
-    const cls = streak.win ? 'win-streak' : 'loss-streak';
-    const emoji = streak.win ? '🔥' : '💀';
-    const text = streak.win
-      ? streak.count + ' ' + pluralize(streak.count, 'победа', 'победы', 'побед') + ' подряд'
-      : streak.count + ' ' + pluralize(streak.count, 'поражение', 'поражения', 'поражений') + ' подряд';
-    html += '<div class="streak ' + cls + '"><span class="streak-emoji">' + emoji + '</span><span>' + text + '</span></div>';
-  }
-
-  const heroCount = {};
-  matches.forEach(m => { heroCount[m.hero_id] = (heroCount[m.hero_id] || 0) + 1; });
-  const topHeroes = Object.entries(heroCount).sort((a,b) => b[1] - a[1]).slice(0, 5);
-
-  html += '<div class="filters">';
-  html += '<button class="filter-btn ' + (matchFilter === 'all' ? 'active' : '') + '" onclick="setFilter(\'all\')">Все</button>';
-  html += '<button class="filter-btn ' + (matchFilter === 'wins' ? 'active' : '') + '" onclick="setFilter(\'wins\')">Победы</button>';
-  html += '<button class="filter-btn ' + (matchFilter === 'losses' ? 'active' : '') + '" onclick="setFilter(\'losses\')">Поражения</button>';
-  for (const [hid, count] of topHeroes) {
-    const name = (HEROES[hid] || '').replace(/_/g, ' ');
-    html += '<button class="filter-btn ' + (heroFilterId == hid ? 'active' : '') + '" onclick="setHeroFilter(' + hid + ')">' + name + ' (' + count + ')</button>';
-  }
-  html += '</div>';
-
-  let filtered = matches;
-  if (matchFilter === 'wins') filtered = matches.filter(isWin);
-  else if (matchFilter === 'losses') filtered = matches.filter(m => !isWin(m));
-  if (heroFilterId) filtered = filtered.filter(m => m.hero_id === heroFilterId);
-
-  html += '<h2>Матчи (' + filtered.length + ')</h2>';
-
-  if (filtered.length === 0) {
-    html += '<div class="loading" style="min-height:20vh">Нет матчей по фильтру</div>';
-  }
-
-  for (const m of filtered) {
+  html += '<h2>Последние матчи</h2>';
+  
+  for (const m of matches) {
     const win = isWin(m);
     const heroName = HEROES[m.hero_id] || 'antimage';
     html += '<div class="match' + (win ? '' : ' loss') + '" onclick="openMatch(' + m.match_id + ')">';
@@ -503,25 +398,13 @@ function renderMatches() {
     html += '<div class="duration">' + formatDuration(m.duration) + '</div>';
     html += '</div></div>';
   }
-
   document.getElementById('page-matches').innerHTML = html;
-}
-
-function setFilter(f) {
-  matchFilter = f;
-  heroFilterId = null;
-  renderMatches();
-}
-function setHeroFilter(id) {
-  heroFilterId = (heroFilterId === id) ? null : id;
-  matchFilter = 'all';
-  renderMatches();
 }
 
 function renderHeroes() {
   const heroes = cache.heroes;
   const sorted = [...heroes].sort((a, b) => b.games - a.games);
-
+  
   let html = '<h2>Все герои (' + heroes.length + ')</h2>';
   for (const h of sorted) {
     const wr = h.games > 0 ? ((h.win / h.games) * 100).toFixed(0) : 0;
@@ -542,40 +425,147 @@ function renderHeroes() {
   document.getElementById('page-heroes').innerHTML = html;
 }
 
-function renderRoles() {
-  const roles = {
-    1: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
-    2: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
-    3: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
-    4: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
-    5: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 }
-  };
+function renderTop() {
+  const heroes = cache.heroes.filter(h => h.games >= 3);
+  const sorted = [...heroes].sort((a, b) => {
+    const wrA = a.win / a.games;
+    const wrB = b.win / b.games;
+    return wrB - wrA;
+  }).slice(0, 10);
+  
+  if (sorted.length === 0) {
+    document.getElementById('page-top').innerHTML = '<div class="loading">Недостаточно данных. Играй больше!</div>';
+    return;
+  }
+  
+  let html = '<h2>🏆 Лучшие герои</h2>';
+  sorted.forEach((h, idx) => {
+    const wr = ((h.win / h.games) * 100).toFixed(0);
+    const kda = ((h.kills + h.assists) / Math.max(h.deaths, 1)).toFixed(2);
+    const heroName = HEROES[h.hero_id] || 'antimage';
+    html += '<div class="hero-card">';
+    html += '<div style="font-size:20px;font-weight:700;color:var(--accent);width:24px;text-align:center;flex-shrink:0">' + (idx + 1) + '</div>';
+    html += '<img src="' + HERO_IMG + heroName + '.png" alt="" onerror="this.style.opacity=0.2">';
+    html += '<div class="hero-card-info">';
+    html += '<div class="hero-name">' + heroName.replace(/_/g, ' ') + '</div>';
+    html += '<div class="hero-games">' + h.games + ' игр</div>';
+    html += '</div>';
+    html += '<div class="hero-card-stats">';
+    html += '<div class="hero-wr good">' + wr + '%</div>';
+    html += '<div class="hero-kda">KDA ' + kda + '</div>';
+    html += '</div></div>';
+  });
+  document.getElementById('page-top').innerHTML = html;
+}
 
-  for (const m of cache.matches) {
-    const role = HERO_ROLES[m.hero_id];
-    if (role && roles[role]) {
-      roles[role].games++;
-      if (isWin(m)) roles[role].wins++;
-      roles[role].kills += m.kills;
-      roles[role].deaths += m.deaths;
-      roles[role].assists += m.assists;
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById('page-' + tab).classList.remove('hidden');
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tabbar button[data-tab="' + tab + '"]').classList.add('active');
+  const titles = { matches: 'Матчи', heroes: 'Герои', top: 'Топ' };
+  document.getElementById('page-title').textContent = titles[tab];
+}
+
+async function openMatch(matchId) {
+  const detail = document.getElementById('detail');
+  const body = document.getElementById('detail-body');
+  detail.classList.add('open');
+  body.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка матча...</div></div>';
+  
+  try {
+    const res = await fetch('https://api.opendota.com/api/matches/' + matchId);
+    if (!res.ok) throw new Error('Не удалось загрузить');
+    const m = await res.json();
+    renderMatchDetail(m);
+  } catch (err) {
+    body.innerHTML = '<div class="error"><div>Ошибка</div><small>' + err.message + '</small></div>';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+}
+
+function renderMatchDetail(m) {
+  document.getElementById('detail-title').textContent = (m.radiant_win ? 'Победа Radiant' : 'Победа Dire') + ' · ' + formatDuration(m.duration);
+  
+  let html = '';
+  
+  // Найти нашего игрока
+  const me = m.players.find(p => p.account_id == ACCOUNT_ID);
+  
+  if (me) {
+    html += '<div class="stat-grid">';
+    html += '<div class="stat-box"><div class="stat-label">K/D/A</div><div class="stat-value">' + me.kills + '/' + me.deaths + '/' + me.assists + '</div></div>';
+    html += '<div class="stat-box"><div class="stat-label">GPM / XPM</div><div class="stat-value">' + me.gold_per_min + ' / ' + me.xp_per_min + '</div></div>';
+    html += '<div class="stat-box"><div class="stat-label">Урон по героям</div><div class="stat-value">' + (me.hero_damage || 0).toLocaleString() + '</div></div>';
+    html += '<div class="stat-box"><div class="stat-label">Последние удары / Денаи</div><div class="stat-value">' + me.last_hits + ' / ' + me.denies + '</div></div>';
+    html += '</div>';
+    
+     // Предметы нашего игрока
+    html += '<h2>Предметы</h2>';
+    html += '<div class="items-row" style="margin-bottom:16px;gap:4px">';
+    for (let i = 0; i < 6; i++) {
+      const itemId = me['item_' + i];
+      if (itemId) {
+        const itemName = ITEMS_MAP[itemId];
+        if (itemName) {
+          html += '<img class="item-icon" style="width:44px;height:33px;border-radius:4px" src="' + ITEM_IMG + itemName + '.png" onerror="this.style.opacity=0.3">';
+        } else {
+          html += '<div class="item-icon" style="width:44px;height:33px;background:var(--card);border-radius:4px"></div>';
+        }
+      } else {
+        html += '<div class="item-icon" style="width:44px;height:33px;background:transparent;border:1px dashed rgba(128,128,128,0.2);border-radius:4px"></div>';
+      }
+    }
+    html += '</div>';
+  }
+  
+  // Команды
+  const radiant = m.players.filter(p => p.player_slot < 128);
+  const dire = m.players.filter(p => p.player_slot >= 128);
+  
+  html += '<div class="team"><div class="team-title radiant">🟢 Radiant</div>';
+  for (const p of radiant) html += renderPlayerRow(p);
+  html += '</div>';
+  
+  html += '<div class="team"><div class="team-title dire">🔴 Dire</div>';
+  for (const p of dire) html += renderPlayerRow(p);
+  html += '</div>';
+  
+  document.getElementById('detail-body').innerHTML = html;
+}
+
+function renderPlayerRow(p) {
+  const heroName = HEROES[p.hero_id] || 'antimage';
+  const name = p.personaname || p.name || 'Игрок';
+  const isMe = p.account_id == ACCOUNT_ID;
+  
+  // Собираем предметы
+  let itemsHtml = '<div class="items-row">';
+  for (let i = 0; i < 6; i++) {
+    const itemId = p['item_' + i];
+    if (itemId && ITEMS_MAP[itemId]) {
+      itemsHtml += '<img class="item-icon" style="width:22px;height:16px;border-radius:2px" src="' + ITEM_IMG + ITEMS_MAP[itemId] + '.png" onerror="this.style.opacity=0.3">';
+    } else {
+      itemsHtml += '<div class="item-icon" style="width:22px;height:16px;background:rgba(128,128,128,0.15);border-radius:2px"></div>';
     }
   }
+  itemsHtml += '</div>';
+  
+  let html = '<div class="player-row"' + (isMe ? ' style="border:1px solid var(--accent);flex-wrap:wrap"' : ' style="flex-wrap:wrap"') + '>';
+  html += '<img class="player-hero" src="' + HERO_IMG + heroName + '.png" onerror="this.style.opacity=0.2">';
+  html += '<div class="player-name">' + name + '</div>';
+  html += '<div class="player-kda">' + p.kills + '/' + p.deaths + '/' + p.assists + '</div>';
+  html += '<div style="width:100%;margin-top:4px">' + itemsHtml + '</div>';
+  html += '</div>';
+  return html;
+}
 
-  let html = '<h2>Win Rate по ролям</h2>';
-  html += '<p style="color:var(--text-dim);font-size:13px;margin-bottom:14px">На основе последних ' + cache.matches.length + ' матчей</p>';
-
-  for (const role of [1, 2, 3, 4, 5]) {
-    const r = roles[role];
-    if (r.games === 0) {
-      html += '<div class="role-card no-data">';
-      html += '<div class="role-title">' + ROLE_NAMES[role] + '</div>';
-      html += '<div class="role-stats">Нет матчей</div>';
-      html += '</div>';
-      continue;
-    }
-    const wr = ((r.wins / r.games) * 100).toFixed(1);
-    const wrClass = wr >= 50 ? 'good' : 'bad';
-    const avgK = (r.kills / r.games).toFixed(1);
-    const avgD = (r.deaths / r.games).toFixed(1);
-    const avgA = (r.assists
+// Запуск
+loadData();
+</script>
+</body>
+</html>
