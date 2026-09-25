@@ -447,7 +447,7 @@ async function loadData(force = false) {
     if (!useCache) {
       const [playerRes, matchesRes, heroesRes] = await Promise.all([
         fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID),
-        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=500'),
+        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=200'),
         fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/heroes')
       ]);
       if (!playerRes.ok || !matchesRes.ok || !heroesRes.ok) throw new Error('Ошибка API');
