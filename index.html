@@ -125,6 +125,16 @@
   .hero-wr.good { color: var(--win); }
   .hero-wr.bad { color: var(--loss); }
   .hero-kda { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+  .role-card {
+    background: var(--card); border-radius: 12px; padding: 16px;
+    border-left: 4px solid var(--accent); margin-bottom: 10px;
+  }
+  .role-card.no-data { border-left-color: var(--text-dim); opacity: 0.6; }
+  .role-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .role-stats { color: var(--text-dim); font-size: 13px; }
+  .role-wr { font-size: 24px; font-weight: 700; margin-top: 6px; }
+  .role-wr.good { color: var(--win); }
+  .role-wr.bad { color: var(--loss); }
 
   .tabbar {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -206,7 +216,9 @@
 <div id="page-heroes" class="page hidden">
   <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
 </div>
-
+<div id="page-roles" class="page hidden">
+  <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
+</div>
 <div id="page-top" class="page hidden">
   <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
 </div>
@@ -217,6 +229,9 @@
   </button>
   <button data-tab="heroes" onclick="switchTab('heroes')">
     <span class="icon">🦸</span><span>Герои</span>
+  </button>
+    <button data-tab="roles" onclick="switchTab('roles')">
+    <span class="icon">🎯</span><span>Роли</span>
   </button>
   <button data-tab="top" onclick="switchTab('top')">
     <span class="icon">🏆</span><span>Топ</span>
@@ -265,7 +280,22 @@ const HEROES = {
   126:'void_spirit',128:'snapfire',129:'mars',131:'ringmaster',
   135:'dawnbreaker',136:'marci',137:'primal_beast',138:'muerta'
 };
+// Маппинг герой → позиция (1=керри, 2=мид, 3=оффлейн, 4=сапорт, 5=хард сапорт)
+const HERO_ROLES = {
+  1:1,6:1,8:1,10:1,12:1,15:1,18:1,19:1,32:1,35:1,41:1,42:1,44:1,46:1,47:1,48:1,
+  54:1,56:1,59:1,63:1,67:1,70:1,72:1,73:1,77:1,80:1,81:1,89:1,93:1,94:1,95:1,
+  98:1,106:1,109:1,110:1,114:1,120:1,129:1,136:1,
+  11:2,13:2,17:2,21:2,25:2,34:2,39:2,45:2,52:2,53:2,55:2,74:2,76:2,90:2,105:2,
+  113:2,126:2,128:2,138:2,
+  2:3,4:3,7:3,14:3,16:3,22:3,23:3,28:3,29:3,33:3,36:3,38:3,49:3,51:3,57:3,60:3,
+  61:3,64:3,65:3,69:3,71:3,78:3,84:3,88:3,96:3,97:3,99:3,100:3,103:3,104:3,
+  107:3,108:3,111:3,119:3,121:3,123:3,135:3,137:3,
+  5:4,9:4,20:4,26:4,27:4,31:4,37:4,40:4,43:4,50:4,58:4,62:4,68:4,79:4,83:4,86:4,
+  87:4,91:4,101:4,102:4,112:4,131:4,
+  3:5,24:5,30:5,66:5,75:5,82:5,85:5,92:5,115:5
+};
 
+const ROLE_NAMES = { 1: 'Керри (1)', 2: 'Мидер (2)', 3: 'Оффлейн (3)', 4: 'Сапорт (4)', 5: 'Хард сапорт (5)' };
 const RANKS = ['Нет','Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
 
 let cache = { player: null, matches: [], heroes: [], timestamp: 0 };
@@ -372,6 +402,7 @@ async function loadItemsMap() {
 function renderAll() {
   renderMatches();
   renderHeroes();
+  renderRoles();
   renderTop();
 }
 function calculateStreak() {
@@ -461,6 +492,52 @@ function renderHeroes() {
   }
   document.getElementById('page-heroes').innerHTML = html;
 }
+function renderRoles() {
+  const roles = {
+    1: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
+    2: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
+    3: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
+    4: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 },
+    5: { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 }
+  };
+
+  for (const m of cache.matches) {
+    const role = HERO_ROLES[m.hero_id];
+    if (role && roles[role]) {
+      roles[role].games++;
+      if (isWin(m)) roles[role].wins++;
+      roles[role].kills += m.kills;
+      roles[role].deaths += m.deaths;
+      roles[role].assists += m.assists;
+    }
+  }
+
+  let html = '<h2>Win Rate по ролям</h2>';
+  html += '<p style="color:var(--text-dim);font-size:13px;margin-bottom:14px">На основе последних ' + cache.matches.length + ' матчей</p>';
+
+  for (const role of [1, 2, 3, 4, 5]) {
+    const r = roles[role];
+    if (r.games === 0) {
+      html += '<div class="role-card no-data">';
+      html += '<div class="role-title">' + ROLE_NAMES[role] + '</div>';
+      html += '<div class="role-stats">Нет матчей</div>';
+      html += '</div>';
+      continue;
+    }
+    const wr = ((r.wins / r.games) * 100).toFixed(1);
+    const wrClass = wr >= 50 ? 'good' : 'bad';
+    const avgK = (r.kills / r.games).toFixed(1);
+    const avgD = (r.deaths / r.games).toFixed(1);
+    const avgA = (r.assists / r.games).toFixed(1);
+    html += '<div class="role-card">';
+    html += '<div class="role-title">' + ROLE_NAMES[role] + '</div>';
+    html += '<div class="role-stats">' + r.games + ' игр · ' + r.wins + ' побед</div>';
+    html += '<div class="role-stats">Средний KDA: ' + avgK + '/' + avgD + '/' + avgA + '</div>';
+    html += '<div class="role-wr ' + wrClass + '">' + wr + '%</div>';
+    html += '</div>';
+  }
+  document.getElementById('page-roles').innerHTML = html;
+}
 
 function renderTop() {
   const heroes = cache.heroes.filter(h => h.games >= 3);
@@ -501,7 +578,7 @@ function switchTab(tab) {
   document.getElementById('page-' + tab).classList.remove('hidden');
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('active'));
   document.querySelector('.tabbar button[data-tab="' + tab + '"]').classList.add('active');
-  const titles = { matches: 'Матчи', heroes: 'Герои', top: 'Топ' };
+   const titles = { matches: 'Матчи', heroes: 'Герои', roles: 'Роли', top: 'Топ' };
   document.getElementById('page-title').textContent = titles[tab];
 }
 
