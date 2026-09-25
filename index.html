@@ -304,9 +304,7 @@
 <div id="page-matches" class="page">
   <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
 </div>
-<div id="page-friends" class="page hidden">
-  <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
-</div>
+
 <div id="page-heroes" class="page hidden">
   <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
 </div>
@@ -327,10 +325,7 @@
     <button data-tab="roles" onclick="switchTab('roles')">
     <span class="icon">🎯</span><span>Роли</span>
   </button>
-   <button data-tab="friends" onclick="switchTab('friends')">
-    <span class="icon">👥</span><span>Друзья</span>
-  </button>
-   <button data-tab="top" onclick="switchTab('top')">
+  <button data-tab="top" onclick="switchTab('top')">
     <span class="icon">🏆</span><span>Топ</span>
   </button>
 </div>
@@ -348,8 +343,7 @@ const ACCOUNT_ID = '1062784716';
 const HERO_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
 const ITEM_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/';
 let ITEMS_MAP = {}; // сюда загрузим id → имя предмета
-let PEERS = [];
-let PEERS_LOADED = false;
+
 const HEROES = {
   1:'antimage',2:'axe',3:'bane',4:'bloodseeker',5:'crystal_maiden',6:'drow_ranger',
   7:'earthshaker',8:'juggernaut',9:'mirana',10:'morphling',11:'nevermore',
@@ -464,8 +458,7 @@ async function loadData(force = false) {
     }
     
     // Загружаем маппинг предметов отдельно (кешируется навсегда)
-     await loadPeers();
-     await loadItemsMap();
+    await loadItemsMap();
     
     renderAll();
   } catch (err) {
@@ -498,24 +491,11 @@ async function loadItemsMap() {
     console.log('Не удалось загрузить список предметов', e);
   }
 }
-async function loadPeers() {
-  if (PEERS_LOADED) return;
-  try {
-    const res = await fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/peers');
-    if (!res.ok) return;
-    const data = await res.json();
-    // Сортируем по количеству игр, берём топ-10
-    PEERS = data.sort((a, b) => b.games - a.games).slice(0, 10);
-    PEERS_LOADED = true;
-  } catch (e) {
-    console.log('Не удалось загрузить пиров', e);
-  }
-}
+
 function renderAll() {
   renderMatches();
   renderHeroes();
   renderRoles();
-  renderFriends();
   renderTop();
 }
 let activityPeriodDays = 90; // по умолчанию 3 месяца
@@ -865,37 +845,7 @@ function renderRoles() {
   }
   document.getElementById('page-roles').innerHTML = html;
 }
-function renderFriends() {
-  if (!PEERS || PEERS.length === 0) {
-    document.getElementById('page-friends').innerHTML =
-      '<div class="loading">Недостаточно данных. Играй больше, чтобы увидеть, с кем чаще всего попадаешь в команду.</div>';
-    return;
-  }
 
-  let html = '<h2>👥 Частые союзники</h2>';
-  html += '<p style="color:var(--text-dim);font-size:13px;margin-bottom:14px">Игроки, с которыми ты чаще всего был в одной команде</p>';
-
-  for (const p of PEERS) {
-    const wr = p.games > 0 ? ((p.win / p.games) * 100).toFixed(0) : 0;
-    const wrClass = wr >= 50 ? 'good' : 'bad';
-    const name = p.personaname || 'Аноним';
-    const steamId = p.account_id;
-    const steamLink = 'https://steamcommunity.com/profiles/' + (steamId + 76561197960265728);
-
-    html += '<div class="hero-card">';
-    html += '<div style="width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0">' + name.charAt(0).toUpperCase() + '</div>';
-    html += '<div class="hero-card-info">';
-    html += '<div class="hero-name" style="font-size:14px">' + name + '</div>';
-    html += '<div class="hero-games">' + p.games + ' игр вместе</div>';
-    html += '</div>';
-    html += '<div class="hero-card-stats">';
-    html += '<div class="hero-wr ' + wrClass + '">' + wr + '%</div>';
-    html += '<div class="hero-kda">' + p.win + ' побед</div>';
-    html += '</div></div>';
-  }
-
-  document.getElementById('page-friends').innerHTML = html;
-}
 function renderTop() {
   const heroes = cache.heroes.filter(h => h.games >= 3);
   const sorted = [...heroes].sort((a, b) => {
@@ -935,7 +885,7 @@ function switchTab(tab) {
   document.getElementById('page-' + tab).classList.remove('hidden');
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('active'));
   document.querySelector('.tabbar button[data-tab="' + tab + '"]').classList.add('active');
-  const titles = { matches: 'Матчи', heroes: 'Герои', roles: 'Роли', friends: 'Друзья', top: 'Топ' };
+   const titles = { matches: 'Матчи', heroes: 'Герои', roles: 'Роли', top: 'Топ' };
   document.getElementById('page-title').textContent = titles[tab];
 }
 
