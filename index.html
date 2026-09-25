@@ -602,10 +602,6 @@ function showActivityTooltip(el) {
   setTimeout(() => tooltip.remove(), 2000);
 }
 
-
-  return { cells, dayLabels, weeksCount };
-}
-
  function calculateStreak() {
   const sorted = [...cache.matches].sort((a, b) => b.start_time - a.start_time);
   if (sorted.length === 0) return null;
