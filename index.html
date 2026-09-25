@@ -228,6 +228,7 @@
 const ACCOUNT_ID = '1062784716';
 const HERO_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
 const ITEM_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/';
+let ITEMS_MAP = {}; // сюда загрузим id → имя предмета
 
 const HEROES = {
   1:'antimage',2:'axe',3:'bane',4:'bloodseeker',5:'crystal_maiden',6:'drow_ranger',
@@ -325,10 +326,39 @@ async function loadData(force = false) {
       cache.heroes = await heroesRes.json();
       saveCache();
     }
+    
+    // Загружаем маппинг предметов отдельно (кешируется навсегда)
+    await loadItemsMap();
+    
     renderAll();
   } catch (err) {
     document.getElementById('page-' + currentTab).innerHTML =
       '<div class="error"><div>Ошибка загрузки</div><small>' + err.message + '</small></div>';
+  }
+}
+
+// Загрузка списка предметов (id → имя). Кешируется навсегда в localStorage.
+async function loadItemsMap() {
+  try {
+    const cached = localStorage.getItem('dota_items_map');
+    if (cached) {
+      ITEMS_MAP = JSON.parse(cached);
+      return;
+    }
+    const res = await fetch('https://api.opendota.com/api/constants/items');
+    if (!res.ok) return;
+    const data = await res.json();
+    // data = { "blink": {id: 1, ...}, "black_king_bar": {id: 34, ...}, ... }
+    const map = {};
+    for (const [name, info] of Object.entries(data)) {
+      if (info && info.id) {
+        map[info.id] = name;
+      }
+    }
+    ITEMS_MAP = map;
+    localStorage.setItem('dota_items_map', JSON.stringify(map));
+  } catch (e) {
+    console.log('Не удалось загрузить список предметов', e);
   }
 }
 
@@ -474,13 +504,20 @@ function renderMatchDetail(m) {
     html += '<div class="stat-box"><div class="stat-label">Последние удары / Денаи</div><div class="stat-value">' + me.last_hits + ' / ' + me.denies + '</div></div>';
     html += '</div>';
     
-    // Предметы нашего игрока
+     // Предметы нашего игрока
     html += '<h2>Предметы</h2>';
-    html += '<div class="items-row" style="margin-bottom:16px">';
+    html += '<div class="items-row" style="margin-bottom:16px;gap:4px">';
     for (let i = 0; i < 6; i++) {
       const itemId = me['item_' + i];
       if (itemId) {
-        html += '<img class="item-icon" style="width:38px;height:28px" src="' + ITEM_IMG + itemId + '.png" onerror="this.style.display=\'none\'">';
+        const itemName = ITEMS_MAP[itemId];
+        if (itemName) {
+          html += '<img class="item-icon" style="width:44px;height:33px;border-radius:4px" src="' + ITEM_IMG + itemName + '.png" onerror="this.style.opacity=0.3">';
+        } else {
+          html += '<div class="item-icon" style="width:44px;height:33px;background:var(--card);border-radius:4px"></div>';
+        }
+      } else {
+        html += '<div class="item-icon" style="width:44px;height:33px;background:transparent;border:1px dashed rgba(128,128,128,0.2);border-radius:4px"></div>';
       }
     }
     html += '</div>';
@@ -505,10 +542,24 @@ function renderPlayerRow(p) {
   const heroName = HEROES[p.hero_id] || 'antimage';
   const name = p.personaname || p.name || 'Игрок';
   const isMe = p.account_id == ACCOUNT_ID;
-  let html = '<div class="player-row"' + (isMe ? ' style="border:1px solid var(--accent)"' : '') + '>';
+  
+  // Собираем предметы
+  let itemsHtml = '<div class="items-row">';
+  for (let i = 0; i < 6; i++) {
+    const itemId = p['item_' + i];
+    if (itemId && ITEMS_MAP[itemId]) {
+      itemsHtml += '<img class="item-icon" style="width:22px;height:16px;border-radius:2px" src="' + ITEM_IMG + ITEMS_MAP[itemId] + '.png" onerror="this.style.opacity=0.3">';
+    } else {
+      itemsHtml += '<div class="item-icon" style="width:22px;height:16px;background:rgba(128,128,128,0.15);border-radius:2px"></div>';
+    }
+  }
+  itemsHtml += '</div>';
+  
+  let html = '<div class="player-row"' + (isMe ? ' style="border:1px solid var(--accent);flex-wrap:wrap"' : ' style="flex-wrap:wrap"') + '>';
   html += '<img class="player-hero" src="' + HERO_IMG + heroName + '.png" onerror="this.style.opacity=0.2">';
   html += '<div class="player-name">' + name + '</div>';
   html += '<div class="player-kda">' + p.kills + '/' + p.deaths + '/' + p.assists + '</div>';
+  html += '<div style="width:100%;margin-top:4px">' + itemsHtml + '</div>';
   html += '</div>';
   return html;
 }
