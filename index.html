@@ -82,7 +82,30 @@
   .nickname { font-size: 20px; font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rank { color: var(--accent); font-size: 13px; font-weight: 600; }
   .winrate { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
- .streak {
+   .activity {
+    background: var(--card); border-radius: 12px; padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .activity-title {
+    font-size: 14px; font-weight: 600; margin-bottom: 10px;
+    color: var(--text-dim);
+  }
+  .activity-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+  }
+  .activity-cell {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    background: rgba(128,128,128,0.15);
+  }
+  .activity-cell.win { background: var(--win); }
+  .activity-cell.loss { background: var(--loss); }
+  .activity-cell.mixed {
+    background: linear-gradient(135deg, var(--win) 50%, var(--loss) 50%);
+  }
+   .streak {
     background: var(--card); border-radius: 12px; padding: 12px 16px;
     margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
     font-weight: 600; font-size: 15px;
@@ -420,7 +443,38 @@ function renderAll() {
   renderRoles();
   renderTop();
 }
-function calculateStreak() {
+function calculateActivity(days) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const startTime = now.getTime() - (days - 1) * 24 * 60 * 60 * 1000;
+
+  const byDay = {};
+  for (const m of cache.matches) {
+    const dayTs = m.start_time * 1000;
+    if (dayTs < startTime) continue;
+    const day = new Date(dayTs);
+    day.setHours(0, 0, 0, 0);
+    const key = day.getTime();
+    if (!byDay[key]) byDay[key] = { wins: 0, losses: 0 };
+    if (isWin(m)) byDay[key].wins++;
+    else byDay[key].losses++;
+  }
+
+  const result = [];
+  for (let i = 0; i < days; i++) {
+    const ts = startTime + i * 24 * 60 * 60 * 1000;
+    const dayData = byDay[ts];
+    let cls = '';
+    if (dayData) {
+      if (dayData.wins > 0 && dayData.losses > 0) cls = 'mixed';
+      else if (dayData.wins > 0) cls = 'win';
+      else cls = 'loss';
+    }
+    result.push(cls);
+  }
+  return result;
+}
+ function calculateStreak() {
   const sorted = [...cache.matches].sort((a, b) => b.start_time - a.start_time);
   if (sorted.length === 0) return null;
   const firstWin = isWin(sorted[0]);
@@ -463,7 +517,16 @@ function renderMatches() {
       : streak.count + ' ' + pluralize(streak.count, 'поражение', 'поражения', 'поражений') + ' подряд';
     html += '<div class="streak ' + cls + '"><span class="streak-emoji">' + emoji + '</span><span>' + text + '</span></div>';
   }
-
+  // Календарь активности за 30 дней
+  const activity = calculateActivity(30);
+  html += '<div class="activity">';
+  html += '<div class="activity-title">📅 Активность за 30 дней</div>';
+  html += '<div class="activity-grid">';
+  for (const cls of activity) {
+    html += '<div class="activity-cell ' + cls + '"></div>';
+  }
+  html += '</div>';
+  html += '</div>';
    // Фильтры
   const heroCount = {};
   matches.forEach(m => { heroCount[m.hero_id] = (heroCount[m.hero_id] || 0) + 1; });
