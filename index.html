@@ -82,28 +82,52 @@
   .nickname { font-size: 20px; font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rank { color: var(--accent); font-size: 13px; font-weight: 600; }
   .winrate { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
-   .activity {
-    background: var(--card); border-radius: 12px; padding: 14px 16px;
-    margin-bottom: 16px;
+    .activity {
+    background: var(--card); border-radius: 12px; padding: 14px 14px 10px;
+    margin-bottom: 16px; overflow-x: auto;
   }
   .activity-title {
-    font-size: 14px; font-weight: 600; margin-bottom: 10px;
+    font-size: 13px; font-weight: 600; margin-bottom: 10px;
     color: var(--text-dim);
+  }
+  .activity-wrap {
+    display: inline-block; min-width: 100%;
+  }
+  .activity-days {
+    display: grid;
+    grid-template-columns: 24px repeat(7, 14px);
+    gap: 3px; margin-bottom: 4px;
+  }
+  .activity-day-label {
+    font-size: 9px; color: var(--text-dim); text-align: center;
+    line-height: 14px;
   }
   .activity-grid {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 5px;
+    grid-template-rows: repeat(7, 14px);
+    grid-auto-flow: column;
+    grid-auto-columns: 14px;
+    gap: 3px;
   }
   .activity-cell {
-    aspect-ratio: 1;
-    border-radius: 4px;
-    background: rgba(128,128,128,0.15);
+    width: 14px; height: 14px; border-radius: 3px;
+    background: rgba(128,128,128,0.1);
   }
-  .activity-cell.win { background: var(--win); }
-  .activity-cell.loss { background: var(--loss); }
-  .activity-cell.mixed {
-    background: linear-gradient(135deg, var(--win) 50%, var(--loss) 50%);
+  .activity-months {
+    display: grid;
+    grid-template-columns: 24px repeat(7, 14px);
+    gap: 3px; margin-top: 6px;
+  }
+  .activity-month-label {
+    font-size: 9px; color: var(--text-dim);
+    grid-column: span 8; padding-left: 24px;
+  }
+  .activity-legend {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 10px; font-size: 10px; color: var(--text-dim);
+  }
+  .activity-legend-cell {
+    width: 12px; height: 12px; border-radius: 2px;
   }
    .streak {
     background: var(--card); border-radius: 12px; padding: 12px 16px;
@@ -443,6 +467,18 @@ function renderAll() {
   renderRoles();
   renderTop();
 }
+function getDayColor(wins, losses) {
+  const total = wins + losses;
+  if (total === 0) return 'rgba(128,128,128,0.1)';
+  const delta = (wins - losses) / total; // от -1 до 1
+
+  if (delta >= 0.66) return '#1a7f37';   // почти все победы
+  if (delta >= 0.33) return '#2ea043';   // больше побед
+  if (delta > -0.33) return '#5a5a3d';   // примерно равное
+  if (delta > -0.66) return '#d73a49';   // больше поражений
+  return '#a01220';                       // почти все поражения
+}
+
 function calculateActivity(days) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -460,20 +496,39 @@ function calculateActivity(days) {
     else byDay[key].losses++;
   }
 
-  const result = [];
-  for (let i = 0; i < days; i++) {
-    const ts = startTime + i * 24 * 60 * 60 * 1000;
-    const dayData = byDay[ts];
-    let cls = '';
-    if (dayData) {
-      if (dayData.wins > 0 && dayData.losses > 0) cls = 'mixed';
-      else if (dayData.wins > 0) cls = 'win';
-      else cls = 'loss';
+  // Строим сетку: колонки по неделям, строки по дням (Пн..Вс)
+  const dayLabels = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+  // Находим первый понедельник в диапазоне
+  const startDate = new Date(startTime);
+  const startDayOfWeek = (startDate.getDay() + 6) % 7; // 0 = Пн
+  const gridStart = startTime - startDayOfWeek * 24 * 60 * 60 * 1000;
+
+  // Считаем количество колонок (недель)
+  const weeksCount = Math.ceil((days + startDayOfWeek) / 7);
+
+  // Заполняем сетку
+  const cells = [];
+  for (let w = 0; w < weeksCount; w++) {
+    for (let d = 0; d < 7; d++) {
+      const ts = gridStart + (w * 7 + d) * 24 * 60 * 60 * 1000;
+      const inRange = ts >= startTime && ts <= now.getTime();
+      if (!inRange) {
+        cells.push({ color: 'transparent', inRange: false });
+      } else {
+        const dayData = byDay[ts];
+        if (dayData) {
+          cells.push({ color: getDayColor(dayData.wins, dayData.losses), inRange: true });
+        } else {
+          cells.push({ color: 'rgba(128,128,128,0.1)', inRange: true });
+        }
+      }
     }
-    result.push(cls);
   }
-  return result;
+
+  return { cells, dayLabels, weeksCount };
 }
+
  function calculateStreak() {
   const sorted = [...cache.matches].sort((a, b) => b.start_time - a.start_time);
   if (sorted.length === 0) return null;
@@ -517,14 +572,42 @@ function renderMatches() {
       : streak.count + ' ' + pluralize(streak.count, 'поражение', 'поражения', 'поражений') + ' подряд';
     html += '<div class="streak ' + cls + '"><span class="streak-emoji">' + emoji + '</span><span>' + text + '</span></div>';
   }
-  // Календарь активности за 30 дней
+   // Календарь активности за 30 дней (heatmap)
   const activity = calculateActivity(30);
   html += '<div class="activity">';
   html += '<div class="activity-title">📅 Активность за 30 дней</div>';
-  html += '<div class="activity-grid">';
-  for (const cls of activity) {
-    html += '<div class="activity-cell ' + cls + '"></div>';
+  html += '<div class="activity-wrap">';
+
+  // Заголовки дней недели
+  html += '<div class="activity-days">';
+  html += '<div></div>'; // пустой угол
+  for (const d of activity.dayLabels) {
+    html += '<div class="activity-day-label">' + d + '</div>';
   }
+  html += '</div>';
+
+  // Сетка
+  html += '<div class="activity-grid">';
+  for (const c of activity.cells) {
+    if (!c.inRange) {
+      html += '<div class="activity-cell" style="background:transparent"></div>';
+    } else {
+      html += '<div class="activity-cell" style="background:' + c.color + '"></div>';
+    }
+  }
+  html += '</div>';
+
+  // Легенда
+  html += '<div class="activity-legend">';
+  html += '<span>Меньше</span>';
+  html += '<div class="activity-legend-cell" style="background:#a01220"></div>';
+  html += '<div class="activity-legend-cell" style="background:#d73a49"></div>';
+  html += '<div class="activity-legend-cell" style="background:#5a5a3d"></div>';
+  html += '<div class="activity-legend-cell" style="background:#2ea043"></div>';
+  html += '<div class="activity-legend-cell" style="background:#1a7f37"></div>';
+  html += '<span>Больше</span>';
+  html += '</div>';
+
   html += '</div>';
   html += '</div>';
    // Фильтры
