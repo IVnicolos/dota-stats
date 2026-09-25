@@ -645,7 +645,7 @@ function renderMatches() {
       : streak.count + ' ' + pluralize(streak.count, 'поражение', 'поражения', 'поражений') + ' подряд';
     html += '<div class="streak ' + cls + '"><span class="streak-emoji">' + emoji + '</span><span>' + text + '</span></div>';
   }
-      // Календарь активности (heatmap)
+        // Календарь активности (heatmap)
   const activity = calculateActivity(activityPeriodDays);
   html += '<div class="activity">';
   html += '<div class="activity-header">';
@@ -671,7 +671,7 @@ function renderMatches() {
   let lastRenderedCol = -1;
   for (let w = 0; w < activity.weeksCount; w++) {
     const marker = activity.monthMarkers.find(m => m.colIndex === w);
-    const cellWidth = 11 + 3; // cell + gap
+    const cellWidth = 11 + 3;
     if (marker && w > lastRenderedCol + 1) {
       html += '<div style="font-size:9px; color:var(--text-dim); position:absolute; left:' + (w * cellWidth) + 'px">' + marker.label + '</div>';
       lastRenderedCol = w;
@@ -721,32 +721,7 @@ function renderMatches() {
 
   html += '</div>'; // /activity-wrap
   html += '</div>'; // /activity
-  // Сетка
-  html += '<div class="activity-grid">';
-  for (const c of activity.cells) {
-    if (!c.inRange) {
-      html += '<div class="activity-cell" style="background:transparent"></div>';
-    } else {
-      html += '<div class="activity-cell" style="background:' + c.color + '"></div>';
-    }
-  }
-  html += '</div>';
 
-  html += '</div>'; // /activity-body
-
-  // Легенда
-  html += '<div class="activity-legend">';
-  html += '<span>Меньше</span>';
-  html += '<div class="activity-legend-cell" style="background:#a01220"></div>';
-  html += '<div class="activity-legend-cell" style="background:#d73a49"></div>';
-  html += '<div class="activity-legend-cell" style="background:#5a5a3d"></div>';
-  html += '<div class="activity-legend-cell" style="background:#2ea043"></div>';
-  html += '<div class="activity-legend-cell" style="background:#1a7f37"></div>';
-  html += '<span>Больше</span>';
-  html += '</div>';
-
-  html += '</div>'; // /activity-wrap
-  html += '</div>'; // /activity
    // Фильтры
   const heroCount = {};
   matches.forEach(m => { heroCount[m.hero_id] = (heroCount[m.hero_id] || 0) + 1; });
