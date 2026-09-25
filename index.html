@@ -89,6 +89,19 @@
   .streak.win-streak { border-left: 4px solid var(--win); }
   .streak.loss-streak { border-left: 4px solid var(--loss); }
   .streak-emoji { font-size: 22px; }
+  .filters {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px;
+    margin-bottom: 6px; scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    flex-shrink: 0; background: var(--card); border: 1px solid transparent;
+    color: var(--text-dim); border-radius: 20px; padding: 6px 14px;
+    font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+  .filter-btn.active {
+    color: var(--accent); border-color: var(--accent); font-weight: 600;
+  }
   h2 { font-size: 17px; margin: 8px 0 12px; font-weight: 600; }
 
   .match {
@@ -300,7 +313,8 @@ const RANKS = ['Нет','Herald','Guardian','Crusader','Archon','Legend','Ancien
 
 let cache = { player: null, matches: [], heroes: [], timestamp: 0 };
 let currentTab = 'matches';
-
+let matchFilter = 'all';
+let heroFilterId = null;
 function getRankName(tier) {
   if (!tier) return null;
   const medal = Math.floor(tier / 10);
@@ -449,10 +463,35 @@ function renderMatches() {
     html += '<div class="streak ' + cls + '"><span class="streak-emoji">' + emoji + '</span><span>' + text + '</span></div>';
   }
 
-  html += '<h2>Последние матчи</h2>';
+   // Фильтры
+  const heroCount = {};
+  matches.forEach(m => { heroCount[m.hero_id] = (heroCount[m.hero_id] || 0) + 1; });
+  const topHeroes = Object.entries(heroCount).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+  html += '<div class="filters">';
+  html += '<button class="filter-btn ' + (matchFilter === 'all' ? 'active' : '') + '" onclick="setFilter(\'all\')">Все</button>';
+  html += '<button class="filter-btn ' + (matchFilter === 'wins' ? 'active' : '') + '" onclick="setFilter(\'wins\')">Победы</button>';
+  html += '<button class="filter-btn ' + (matchFilter === 'losses' ? 'active' : '') + '" onclick="setFilter(\'losses\')">Поражения</button>';
+  for (const [hid, count] of topHeroes) {
+    const name = (HEROES[hid] || '').replace(/_/g, ' ');
+    html += '<button class="filter-btn ' + (heroFilterId == hid ? 'active' : '') + '" onclick="setHeroFilter(' + hid + ')">' + name + ' (' + count + ')</button>';
+  }
+  html += '</div>';
+
+  // Применяем фильтр
+  let filtered = matches;
+  if (matchFilter === 'wins') filtered = matches.filter(isWin);
+  else if (matchFilter === 'losses') filtered = matches.filter(m => !isWin(m));
+  if (heroFilterId) filtered = filtered.filter(m => m.hero_id === heroFilterId);
+
+  html += '<h2>Матчи (' + filtered.length + ')</h2>';
+
+  if (filtered.length === 0) {
+    html += '<div class="loading" style="min-height:20vh">Нет матчей по фильтру</div>';
+  }
 
   
-  for (const m of matches) {
+   for (const m of filtered) {
     const win = isWin(m);
     const heroName = HEROES[m.hero_id] || 'antimage';
     html += '<div class="match' + (win ? '' : ' loss') + '" onclick="openMatch(' + m.match_id + ')">';
@@ -468,7 +507,16 @@ function renderMatches() {
   }
   document.getElementById('page-matches').innerHTML = html;
 }
-
+function setFilter(f) {
+  matchFilter = f;
+  heroFilterId = null;
+  renderMatches();
+}
+function setHeroFilter(id) {
+  heroFilterId = (heroFilterId === id) ? null : id;
+  matchFilter = 'all';
+  renderMatches();
+}
 function renderHeroes() {
   const heroes = cache.heroes;
   const sorted = [...heroes].sort((a, b) => b.games - a.games);
