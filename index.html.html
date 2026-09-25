@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dota Stats">
+<meta name="theme-color" content="#0f1923">
+<link rel="apple-touch-icon" href="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/pudge.png">
+<link rel="icon" href="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/pudge.png">
+<title>Dota Stats</title>
+<style>
+  :root {
+    --bg: #0f1923;
+    --card: #1b2838;
+    --text: #ffffff;
+    --text-dim: #888;
+    --accent: #ff6b35;
+    --win: #4caf50;
+    --loss: #f44336;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f2f4f7;
+      --card: #ffffff;
+      --text: #1a1a1a;
+      --text-dim: #666;
+      --accent: #e85d26;
+      --win: #2e7d32;
+      --loss: #c62828;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+  }
+  body { padding-bottom: 80px; }
+
+  .topbar {
+    padding: 14px 16px 8px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  .topbar h1 { font-size: 22px; font-weight: 700; }
+  .refresh-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--card); border: none; color: var(--accent);
+    font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .refresh-btn:active { transform: scale(0.9); }
+
+  .page { padding: 0 16px; }
+  .page.hidden { display: none; }
+
+  .loading, .error {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 60vh; text-align: center; gap: 12px;
+  }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid var(--card);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { color: var(--loss); }
+  .error small { color: var(--text-dim); }
+
+  .profile {
+    background: var(--card); border-radius: 14px; padding: 16px;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; background: var(--bg); }
+  .profile-info { flex: 1; min-width: 0; }
+  .nickname { font-size: 20px; font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank { color: var(--accent); font-size: 13px; font-weight: 600; }
+  .winrate { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+  h2 { font-size: 17px; margin: 8px 0 12px; font-weight: 600; }
+
+  .match {
+    background: var(--card); border-radius: 10px; padding: 12px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px; border-left: 4px solid var(--win);
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .match:active { transform: scale(0.98); }
+  .match.loss { border-left-color: var(--loss); }
+  .hero {
+    width: 64px; height: 36px; border-radius: 6px;
+    flex-shrink: 0; background: var(--bg); object-fit: cover;
+  }
+  .match-info { flex: 1; min-width: 0; }
+  .result { font-size: 15px; font-weight: 600; }
+  .result.win { color: var(--win); }
+  .result.loss { color: var(--loss); }
+  .date { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+  .match-stats { text-align: right; }
+  .kda { font-size: 15px; font-weight: 600; }
+  .duration { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+
+  .hero-card {
+    background: var(--card); border-radius: 10px; padding: 12px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  }
+  .hero-card img { width: 72px; height: 40px; border-radius: 6px; flex-shrink: 0; }
+  .hero-card-info { flex: 1; min-width: 0; }
+  .hero-name { font-size: 15px; font-weight: 600; text-transform: capitalize; }
+  .hero-games { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+  .hero-card-stats { text-align: right; }
+  .hero-wr { font-size: 16px; font-weight: 700; }
+  .hero-wr.good { color: var(--win); }
+  .hero-wr.bad { color: var(--loss); }
+  .hero-kda { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card);
+    display: flex; justify-content: space-around;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid rgba(128,128,128,0.15);
+    z-index: 20;
+  }
+  .tabbar button {
+    flex: 1; background: none; border: none; padding: 10px 0 8px;
+    color: var(--text-dim); font-size: 11px; font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    cursor: pointer;
+  }
+  .tabbar button.active { color: var(--accent); }
+  .tabbar .icon { font-size: 20px; line-height: 1; }
+
+  .detail-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 100;
+    overflow-y: auto; display: none;
+    padding-bottom: 40px;
+  }
+  .detail-overlay.open { display: block; }
+  .detail-header {
+    padding: 14px 16px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  .back-btn {
+    background: var(--card); border: none; color: var(--text);
+    width: 38px; height: 38px; border-radius: 50%; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .detail-title { font-size: 18px; font-weight: 700; }
+  .detail-body { padding: 0 16px; }
+
+  .stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--card); border-radius: 10px; padding: 12px;
+  }
+  .stat-label { color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
+  .stat-value { font-size: 18px; font-weight: 700; }
+
+  .team { margin-bottom: 16px; }
+  .team-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .team-title.radiant { color: var(--win); }
+  .team-title.dire { color: var(--loss); }
+  .player-row {
+    background: var(--card); border-radius: 8px; padding: 8px 10px;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+    font-size: 13px;
+  }
+  .player-hero { width: 48px; height: 27px; border-radius: 4px; flex-shrink: 0; }
+  .player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .player-kda { font-weight: 600; white-space: nowrap; }
+  .items-row { display: flex; gap: 3px; margin-top: 4px; }
+  .item-icon {
+    width: 26px; height: 20px; border-radius: 3px; background: var(--bg);
+    object-fit: cover;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1 id="page-title">Матчи</h1>
+  <button class="refresh-btn" onclick="loadData(true)">⟳</button>
+</div>
+
+<div id="page-matches" class="page">
+  <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
+</div>
+
+<div id="page-heroes" class="page hidden">
+  <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
+</div>
+
+<div id="page-top" class="page hidden">
+  <div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>
+</div>
+
+<div class="tabbar">
+  <button class="active" data-tab="matches" onclick="switchTab('matches')">
+    <span class="icon">⚔️</span><span>Матчи</span>
+  </button>
+  <button data-tab="heroes" onclick="switchTab('heroes')">
+    <span class="icon">🦸</span><span>Герои</span>
+  </button>
+  <button data-tab="top" onclick="switchTab('top')">
+    <span class="icon">🏆</span><span>Топ</span>
+  </button>
+</div>
+
+<div id="detail" class="detail-overlay">
+  <div class="detail-header">
+    <button class="back-btn" onclick="closeDetail()">←</button>
+    <div class="detail-title" id="detail-title">Матч</div>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<script>
+const ACCOUNT_ID = '1062784716';
+const HERO_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
+const ITEM_IMG = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/';
+
+const HEROES = {
+  1:'antimage',2:'axe',3:'bane',4:'bloodseeker',5:'crystal_maiden',6:'drow_ranger',
+  7:'earthshaker',8:'juggernaut',9:'mirana',10:'morphling',11:'nevermore',
+  12:'phantom_lancer',13:'puck',14:'pudge',15:'razor',16:'sand_king',
+  17:'storm_spirit',18:'sven',19:'tiny',20:'vengefulspirit',21:'windrunner',
+  22:'zuus',23:'kunkka',25:'lina',26:'lion',27:'shadow_shaman',28:'slardar',
+  29:'tidehunter',30:'witch_doctor',31:'lich',32:'riki',33:'enigma',34:'tinker',
+  35:'sniper',36:'necrolyte',37:'warlock',38:'beastmaster',39:'queenofpain',
+  40:'venomancer',41:'faceless_void',42:'skeleton_king',43:'death_prophet',
+  44:'phantom_assassin',45:'pugna',46:'templar_assassin',47:'viper',48:'luna',
+  49:'dragon_knight',50:'dazzle',51:'rattletrap',52:'leshrac',53:'furion',
+  54:'life_stealer',55:'dark_seer',56:'clinkz',57:'omniknight',58:'enchantress',
+  59:'huskar',60:'night_stalker',61:'broodmother',62:'bounty_hunter',63:'weaver',
+  64:'jakiro',65:'batrider',66:'chen',67:'spectre',68:'ancient_apparition',
+  69:'doom_bringer',70:'ursa',71:'spirit_breaker',72:'gyrocopter',73:'alchemist',
+  74:'invoker',75:'silencer',76:'obsidian_destroyer',77:'lycan',78:'brewmaster',
+  79:'shadow_demon',80:'lone_druid',81:'chaos_knight',82:'meepo',83:'treant',
+  84:'ogre_magi',85:'undying',86:'rubick',87:'disruptor',88:'nyx_assassin',
+  89:'naga_siren',90:'keeper_of_the_light',91:'wisp',92:'visage',93:'slark',
+  94:'medusa',95:'troll_warlord',96:'centaur',97:'magnataur',98:'shredder',
+  99:'bristleback',100:'tusk',101:'skywrath_mage',102:'abaddon',
+  103:'elder_titan',104:'legion_commander',105:'techies',106:'ember_spirit',
+  107:'earth_spirit',108:'abyssal_underlord',109:'terrorblade',110:'phoenix',
+  111:'oracle',112:'winter_wyvern',113:'arc_warden',114:'monkey_king',
+  119:'dark_willow',120:'pangolier',121:'grimstroke',123:'hoodwink',
+  126:'void_spirit',128:'snapfire',129:'mars',131:'ringmaster',
+  135:'dawnbreaker',136:'marci',137:'primal_beast',138:'muerta'
+};
+
+const RANKS = ['Нет','Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
+
+let cache = { player: null, matches: [], heroes: [], timestamp: 0 };
+let currentTab = 'matches';
+
+function getRankName(tier) {
+  if (!tier) return null;
+  const medal = Math.floor(tier / 10);
+  const star = tier % 10;
+  return (RANKS[medal] || 'Неизвестно') + (star > 0 ? ' ' + star : '');
+}
+function formatDuration(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+function formatDate(ts) {
+  const d = new Date(ts * 1000);
+  const months = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  return d.getDate() + ' ' + months[d.getMonth()] + '.';
+}
+function isWin(m) {
+  const isRadiant = m.player_slot < 128;
+  return (isRadiant && m.radiant_win) || (!isRadiant && !m.radiant_win);
+}
+
+// Кеширование
+function saveCache() {
+  try {
+    cache.timestamp = Date.now();
+    localStorage.setItem('dota_stats_cache', JSON.stringify(cache));
+  } catch(e) {}
+}
+function loadCache() {
+  try {
+    const raw = localStorage.getItem('dota_stats_cache');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    // Кеш живёт 10 минут
+    if (Date.now() - parsed.timestamp > 10 * 60 * 1000) return false;
+    cache = parsed;
+    return true;
+  } catch(e) { return false; }
+}
+
+async function loadData(force = false) {
+  const useCache = !force && loadCache();
+  
+  if (!useCache) {
+    document.getElementById('page-matches').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
+    document.getElementById('page-heroes').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
+    document.getElementById('page-top').innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
+  }
+  
+  try {
+    if (!useCache) {
+      const [playerRes, matchesRes, heroesRes] = await Promise.all([
+        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID),
+        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/matches?limit=20'),
+        fetch('https://api.opendota.com/api/players/' + ACCOUNT_ID + '/heroes')
+      ]);
+      if (!playerRes.ok || !matchesRes.ok || !heroesRes.ok) throw new Error('Ошибка API');
+      cache.player = await playerRes.json();
+      cache.matches = await matchesRes.json();
+      cache.heroes = await heroesRes.json();
+      saveCache();
+    }
+    renderAll();
+  } catch (err) {
+    document.getElementById('page-' + currentTab).innerHTML =
+      '<div class="error"><div>Ошибка загрузки</div><small>' + err.message + '</small></div>';
+  }
+}
+
+function renderAll() {
+  renderMatches();
+  renderHeroes();
+  renderTop();
+}
+
+function renderMatches() {
+  const p = cache.player;
+  const matches = cache.matches;
+  const wins = matches.filter(isWin).length;
+  const wr = matches.length > 0 ? ((wins / matches.length) * 100).toFixed(1) : '0';
+  const rankName = getRankName(p.rank_tier);
+  
+  let html = '<div class="profile">';
+  html += '<img class="avatar" src="' + (p.profile.avatarfull || '') + '" alt="">';
+  html += '<div class="profile-info">';
+  html += '<div class="nickname">' + (p.profile.personaname || 'Игрок') + '</div>';
+  if (rankName) html += '<div class="rank">Ранг: ' + rankName + '</div>';
+  html += '<div class="winrate">Win Rate (последние ' + matches.length + '): ' + wr + '%</div>';
+  html += '</div></div>';
+  html += '<h2>Последние матчи</h2>';
+  
+  for (const m of matches) {
+    const win = isWin(m);
+    const heroName = HEROES[m.hero_id] || 'antimage';
+    html += '<div class="match' + (win ? '' : ' loss') + '" onclick="openMatch(' + m.match_id + ')">';
+    html += '<img class="hero" src="' + HERO_IMG + heroName + '.png" alt="" onerror="this.style.opacity=0.2">';
+    html += '<div class="match-info">';
+    html += '<div class="result ' + (win ? 'win' : 'loss') + '">' + (win ? 'Победа' : 'Поражение') + '</div>';
+    html += '<div class="date">' + formatDate(m.start_time) + '</div>';
+    html += '</div>';
+    html += '<div class="match-stats">';
+    html += '<div class="kda">' + m.kills + '/' + m.deaths + '/' + m.assists + '</div>';
+    html += '<div class="duration">' + formatDuration(m.duration) + '</div>';
+    html += '</div></div>';
+  }
+  document.getElementById('page-matches').innerHTML = html;
+}
+
+function renderHeroes() {
+  const heroes = cache.heroes;
+  const sorted = [...heroes].sort((a, b) => b.games - a.games);
+  
+  let html = '<h2>Все герои (' + heroes.length + ')</h2>';
+  for (const h of sorted) {
+    const wr = h.games > 0 ? ((h.win / h.games) * 100).toFixed(0) : 0;
+    const kda = ((h.kills + h.assists) / Math.max(h.deaths, 1)).toFixed(2);
+    const heroName = HEROES[h.hero_id] || 'antimage';
+    const wrClass = wr >= 50 ? 'good' : 'bad';
+    html += '<div class="hero-card">';
+    html += '<img src="' + HERO_IMG + heroName + '.png" alt="" onerror="this.style.opacity=0.2">';
+    html += '<div class="hero-card-info">';
+    html += '<div class="hero-name">' + heroName.replace(/_/g, ' ') + '</div>';
+    html += '<div class="hero-games">' + h.games + ' игр · ' + h.win + ' побед</div>';
+    html += '</div>';
+    html += '<div class="hero-card-stats">';
+    html += '<div class="hero-wr ' + wrClass + '">' + wr + '%</div>';
+    html += '<div class="hero-kda">KDA ' + kda + '</div>';
+    html += '</div></div>';
+  }
+  document.getElementById('page-heroes').innerHTML = html;
+}
+
+function renderTop() {
+  const heroes = cache.heroes.filter(h => h.games >= 3);
+  const sorted = [...heroes].sort((a, b) => {
+    const wrA = a.win / a.games;
+    const wrB = b.win / b.games;
+    return wrB - wrA;
+  }).slice(0, 10);
+  
+  if (sorted.length === 0) {
+    document.getElementById('page-top').innerHTML = '<div class="loading">Недостаточно данных. Играй больше!</div>';
+    return;
+  }
+  
+  let html = '<h2>🏆 Лучшие герои</h2>';
+  sorted.forEach((h, idx) => {
+    const wr = ((h.win / h.games) * 100).toFixed(0);
+    const kda = ((h.kills + h.assists) / Math.max(h.deaths, 1)).toFixed(2);
+    const heroName = HEROES[h.hero_id] || 'antimage';
+    html += '<div class="hero-card">';
+    html += '<div style="font-size:20px;font-weight:700;color:var(--accent);width:24px;text-align:center;flex-shrink:0">' + (idx + 1) + '</div>';
+    html += '<img src="' + HERO_IMG + heroName + '.png" alt="" onerror="this.style.opacity=0.2">';
+    html += '<div class="hero-card-info">';
+    html += '<div class="hero-name">' + heroName.replace(/_/g, ' ') + '</div>';
+    html += '<div class="hero-games">' + h.games + ' игр</div>';
+    html += '</div>';
+    html += '<div class="hero-card-stats">';
+    html += '<div class="hero-wr good">' + wr + '%</div>';
+    html += '<div class="hero-kda">KDA ' + kda + '</div>';
+    html += '</div></div>';
+  });
+  document.getElementById('page-top').innerHTML = html;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById('page-' + tab).classList.remove('hidden');
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tabbar button[data-tab="' + tab + '"]').classList.add('active');
+  const titles = { matches: 'Матчи', heroes: 'Герои', top: 'Топ' };
+  document.getElementById('page-title').textContent = titles[tab];
+}
+
+async function openMatch(matchId) {
+  const detail = document.getElementById('detail');
+  const body = document.getElementById('detail-body');
+  detail.classList.add('open');
+  body.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка матча...</div></div>';
+  
+  try {
+    const res = await fetch('https://api.opendota.com/api/matches/' + matchId);
+    if (!res.ok) throw new Error('Не удалось загрузить');
+    const m = await res.json();
+    renderMatchDetail(m);
+  } catch (err) {
+    body.innerHTML = '<div class="error"><div>Ошибка</div><small>' + err.message + '</small></div>';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+}
+
+function renderMatchDetail(m) {
+  document.getElementById('detail-title').textContent = (m.radiant_win ? 'Победа Radiant' : 'Победа Dire') + ' · ' + formatDuration(m.duration);
+  
+  let html = '';
+  
+  // Найти нашего игрока
+  const me = m.players.find(p => p.account_id == ACCOUNT_ID);
+  
+  if (me) {
+    html += '<div class="stat-grid">';
+    html += '<div class="stat-box"><div class="stat-label">K/D/A</div><div class="stat-value">' + me.kills + '/' + me.deaths + '/' + me.assists + '</div></div>';
+    html += '<div class="stat-box"><div class="stat-label">GPM / XPM</div><div class="stat-value">' + me.gold_per_min + ' / ' + me.xp_per_min + '</div></div>';
+    html += '<div class="stat-box"><div class="stat-label">Урон по героям</div><div class="stat-value">' + (me.hero_damage || 0).toLocaleString() + '</div></div>';
+    html += '<div class="stat-box"><div class="stat-label">Последние удары / Денаи</div><div class="stat-value">' + me.last_hits + ' / ' + me.denies + '</div></div>';
+    html += '</div>';
+    
+    // Предметы нашего игрока
+    html += '<h2>Предметы</h2>';
+    html += '<div class="items-row" style="margin-bottom:16px">';
+    for (let i = 0; i < 6; i++) {
+      const itemId = me['item_' + i];
+      if (itemId) {
+        html += '<img class="item-icon" style="width:38px;height:28px" src="' + ITEM_IMG + itemId + '.png" onerror="this.style.display=\'none\'">';
+      }
+    }
+    html += '</div>';
+  }
+  
+  // Команды
+  const radiant = m.players.filter(p => p.player_slot < 128);
+  const dire = m.players.filter(p => p.player_slot >= 128);
+  
+  html += '<div class="team"><div class="team-title radiant">🟢 Radiant</div>';
+  for (const p of radiant) html += renderPlayerRow(p);
+  html += '</div>';
+  
+  html += '<div class="team"><div class="team-title dire">🔴 Dire</div>';
+  for (const p of dire) html += renderPlayerRow(p);
+  html += '</div>';
+  
+  document.getElementById('detail-body').innerHTML = html;
+}
+
+function renderPlayerRow(p) {
+  const heroName = HEROES[p.hero_id] || 'antimage';
+  const name = p.personaname || p.name || 'Игрок';
+  const isMe = p.account_id == ACCOUNT_ID;
+  let html = '<div class="player-row"' + (isMe ? ' style="border:1px solid var(--accent)"' : '') + '>';
+  html += '<img class="player-hero" src="' + HERO_IMG + heroName + '.png" onerror="this.style.opacity=0.2">';
+  html += '<div class="player-name">' + name + '</div>';
+  html += '<div class="player-kda">' + p.kills + '/' + p.deaths + '/' + p.assists + '</div>';
+  html += '</div>';
+  return html;
+}
+
+// Запуск
+loadData();
+</script>
+</body>
+</html>
