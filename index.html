@@ -81,7 +81,14 @@
   .nickname { font-size: 20px; font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rank { color: var(--accent); font-size: 13px; font-weight: 600; }
   .winrate { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
-
+ .streak {
+    background: var(--card); border-radius: 12px; padding: 12px 16px;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 15px;
+  }
+  .streak.win-streak { border-left: 4px solid var(--win); }
+  .streak.loss-streak { border-left: 4px solid var(--loss); }
+  .streak-emoji { font-size: 22px; }
   h2 { font-size: 17px; margin: 8px 0 12px; font-weight: 600; }
 
   .match {
@@ -367,6 +374,24 @@ function renderAll() {
   renderHeroes();
   renderTop();
 }
+function calculateStreak() {
+  const sorted = [...cache.matches].sort((a, b) => b.start_time - a.start_time);
+  if (sorted.length === 0) return null;
+  const firstWin = isWin(sorted[0]);
+  let count = 0;
+  for (const m of sorted) {
+    if (isWin(m) === firstWin) count++;
+    else break;
+  }
+  return { win: firstWin, count };
+}
+
+function pluralize(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
 
 function renderMatches() {
   const p = cache.player;
@@ -382,7 +407,19 @@ function renderMatches() {
   if (rankName) html += '<div class="rank">Ранг: ' + rankName + '</div>';
   html += '<div class="winrate">Win Rate (последние ' + matches.length + '): ' + wr + '%</div>';
   html += '</div></div>';
+
+  const streak = calculateStreak();
+  if (streak && streak.count >= 2) {
+    const cls = streak.win ? 'win-streak' : 'loss-streak';
+    const emoji = streak.win ? '🔥' : '💀';
+    const text = streak.win
+      ? streak.count + ' ' + pluralize(streak.count, 'победа', 'победы', 'побед') + ' подряд'
+      : streak.count + ' ' + pluralize(streak.count, 'поражение', 'поражения', 'поражений') + ' подряд';
+    html += '<div class="streak ' + cls + '"><span class="streak-emoji">' + emoji + '</span><span>' + text + '</span></div>';
+  }
+
   html += '<h2>Последние матчи</h2>';
+
   
   for (const m of matches) {
     const win = isWin(m);
